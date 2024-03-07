@@ -5,38 +5,27 @@ import {
   TextInput,
   Pressable,
 } from "react-native";
-import React, { useState, useEffect } from "react";
-import { io } from "socket.io-client";
+import React, { useState } from "react";
 
 export default function App() {
   const [text, setText] = useState("");
-  const socket = io("http://localhost:4000");
-  useEffect(() => {
-    // Event listener for connection
-    socket.on("connect", () => {
-      console.log("Connected to server");
+  var socket = React.useRef(new WebSocket("ws://localhost:8080/ws")).current;
+
+  React.useEffect(() => {
+    socket.addEventListener("open", (event) => {
+      socket.send("Hello Server!");
     });
 
-    // Event listener for 'msg' event
-    socket.on("text", (msg) => {
-      console.log("Received message from server:", msg);
+    socket.addEventListener("message", (event) => {
+      console.log("Message from server: ", event.data);
     });
-
-    // Clean up
-    return () => {
-      socket.disconnect();
-    };
   }, []);
 
   const handleSend = () => {
     console.log(text);
-    socket.emit("text", text);
+    socket.send(text);
     setText("");
   };
-
-  socket.on("msg", (res) => {
-    console.log("Res: ", res);
-  });
 
   return (
     <SafeAreaView style={styles.container}>

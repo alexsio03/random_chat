@@ -1,38 +1,56 @@
-import { StyleSheet, Text, SafeAreaView, TextInput, Pressable } from "react-native";
-import React, {useState, useEffect} from 'react';
-import io from "socket.io-client";
+import {
+  StyleSheet,
+  Text,
+  SafeAreaView,
+  TextInput,
+  Pressable,
+} from "react-native";
+import React, { useState, useEffect } from "react";
+import { io } from "socket.io-client";
 
 export default function App() {
-  const [text, setText] = useState('');
+  const [text, setText] = useState("");
+  const socket = io("http://localhost:4000");
   useEffect(() => {
-    const socket = io("http://localhost:4000");
-
-    socket.on('connect', () => {
-      console.log('Connected to server');
+    // Event listener for connection
+    socket.on("connect", () => {
+      console.log("Connected to server");
     });
 
-    socket.on('disconnect', () => {
-      console.log('Disconnected from server');
+    // Event listener for 'msg' event
+    socket.on("text", (msg) => {
+      console.log("Received message from server:", msg);
     });
 
+    // Clean up
     return () => {
       socket.disconnect();
     };
   }, []);
 
   const handleSend = () => {
-    socket.emit("chat", text);
-    setText('');
-  }
+    console.log(text);
+    socket.emit("text", text);
+    setText("");
+  };
+
+  socket.on("msg", (res) => {
+    console.log("Res: ", res);
+  });
 
   return (
     <SafeAreaView style={styles.container}>
-      <Texts
-        texts={text_msgs}
-      />
+      <Texts texts={text_msgs} />
       <SafeAreaView style={styles.form}>
-        <TextInput value={text} style={styles.input} onChangeText={newText => setText(newText)} placeholder="Send a message" />
-        <Pressable style={styles.send} onPress={handleSend}><Text style={styles.send_text}>Send</Text></Pressable>
+        <TextInput
+          value={text}
+          style={styles.input}
+          onChangeText={(newText) => setText(newText)}
+          placeholder="Send a message"
+        />
+        <Pressable style={styles.send} onPress={handleSend}>
+          <Text style={styles.send_text}>Send</Text>
+        </Pressable>
       </SafeAreaView>
     </SafeAreaView>
   );
@@ -40,13 +58,13 @@ export default function App() {
 
 const Texts = ({ texts }) => (
   <SafeAreaView style={styles.texts}>
-    {texts.map((value) =>
+    {texts.map((value, key) =>
       value.type === "me" ? (
-        <SafeAreaView style={styles.me}>
+        <SafeAreaView key={key} style={styles.me}>
           <Text style={styles.me_text}>{value.text}</Text>
         </SafeAreaView>
       ) : (
-        <SafeAreaView style={styles.them}>
+        <SafeAreaView key={key} style={styles.them}>
           <Text style={styles.them_text}>{value.text}</Text>
         </SafeAreaView>
       ),
@@ -60,7 +78,7 @@ const text_msgs = [
   { type: "me", text: "How are you?" },
   { type: "them", text: "Very well, thank you." },
   { type: "them", text: "And you?" },
-]
+];
 
 const styles = StyleSheet.create({
   container: {
@@ -72,7 +90,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   form: {
-    flexDirection: "row"
+    flexDirection: "row",
   },
   send: {
     width: 40,
@@ -80,12 +98,12 @@ const styles = StyleSheet.create({
     marginTop: 13,
     height: 30,
     borderRadius: 10,
-    backgroundColor: "#4287f5"
+    backgroundColor: "#4287f5",
   },
   send_text: {
     marginTop: 6,
     marginLeft: 3,
-    color: "#fff"
+    color: "#fff",
   },
   texts: {
     width: 380,

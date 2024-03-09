@@ -20,6 +20,8 @@ type textMsg struct {
 }
 
 func main() {
+  room := newRoom()
+  go room.run()
 	http.HandleFunc("/ws", wsHandler)
 	fmt.Println("listening on port 4000")
 	log.Fatal(http.ListenAndServe(":4000", nil))

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -13,9 +14,15 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
+type textMsg struct {
+  Text string   `json:"text"`
+  Id   string   `json:"id"`
+}
+
 func main() {
 	http.HandleFunc("/ws", wsHandler)
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	fmt.Println("listening on port 4000")
+	log.Fatal(http.ListenAndServe(":4000", nil))
 }
 
 func wsHandler(w http.ResponseWriter, r *http.Request) {
@@ -33,7 +40,20 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		fmt.Println("Received message:", string(message))
+		textString := string(message)
+		if textString[0] == '{' {
+      text_msg := textMsg{}
+
+			err = json.Unmarshal(message, &text_msg)
+			if err != nil {
+				fmt.Println(err)
+			}
+
+			fmt.Println(text_msg)
+
+		} else {
+			fmt.Println(textString)
+		}
 
 		err = conn.WriteMessage(messageType, message)
 		if err != nil {

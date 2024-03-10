@@ -18,6 +18,7 @@ var upgrader = websocket.Upgrader{
 type textMsg struct {
 	Text string `json:"text"`
 	Id   string `json:"id"`
+	Username string `json:"username"`
 }
 
 type room struct {

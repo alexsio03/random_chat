@@ -76,13 +76,7 @@ const Texts = ({ texts }) => (
 	</SafeAreaView>
 );
 
-const text_msgs = [
-	{ type: "them", text: "Hello there!" },
-	{ type: "me", text: "Hi!" },
-	{ type: "me", text: "How are you?" },
-	{ type: "them", text: "Very well, thank you." },
-	{ type: "them", text: "And you?" },
-];
+const text_msgs = [];
 
 const styles = StyleSheet.create({
 	container: {

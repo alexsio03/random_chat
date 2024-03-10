@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sync"
 
 	"github.com/gorilla/websocket"
 )
@@ -15,52 +16,79 @@ var upgrader = websocket.Upgrader{
 }
 
 type textMsg struct {
-  Text string   `json:"text"`
-  Id   string   `json:"id"`
+	Text string `json:"text"`
+	Id   string `json:"id"`
+}
+
+type room struct {
+	clients map[*websocket.Conn]bool
+	sync.RWMutex
+}
+
+func newRoom() *room {
+	return &room{
+		clients: make(map[*websocket.Conn]bool),
+	}
+}
+
+func (r *room) addClient(conn *websocket.Conn) {
+	r.Lock()
+	defer r.Unlock()
+	r.clients[conn] = true
+}
+
+func (r *room) removeClient(conn *websocket.Conn) {
+	r.Lock()
+	defer r.Unlock()
+	delete(r.clients, conn)
+}
+
+func (r *room) broadcast(msg []byte) {
+	r.RLock()
+	defer r.RUnlock()
+	for conn := range r.clients {
+		err := conn.WriteMessage(websocket.TextMessage, msg)
+		if err != nil {
+			log.Println("Error broadcasting message:", err)
+			r.removeClient(conn)
+			conn.Close()
+		}
+	}
 }
 
 func main() {
-  room := newRoom()
-  go room.run()
-	http.HandleFunc("/ws", wsHandler)
-	fmt.Println("listening on port 4000")
-	log.Fatal(http.ListenAndServe(":4000", nil))
-}
-
-func wsHandler(w http.ResponseWriter, r *http.Request) {
-	conn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	defer conn.Close()
-
-	for {
-		messageType, message, err := conn.ReadMessage()
+	room := newRoom()
+	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
-			log.Println(err)
+			log.Println("Error upgrading to WebSocket:", err)
 			return
 		}
+		defer conn.Close()
 
-		textString := string(message)
-		if textString[0] == '{' {
-      text_msg := textMsg{}
+		room.addClient(conn)
 
-			err = json.Unmarshal(message, &text_msg)
+		for {
+			_, message, err := conn.ReadMessage()
 			if err != nil {
-				fmt.Println(err)
+				log.Println("Error reading message:", err)
+				room.removeClient(conn)
+				return
 			}
 
-			fmt.Println(text_msg)
-
-		} else {
-			fmt.Println(textString)
+			textString := string(message)
+			if textString[0] == '{' {
+				textMsg := textMsg{}
+				err = json.Unmarshal(message, &textMsg)
+				if err != nil {
+					log.Println("Error decoding JSON:", err)
+					continue
+				}
+			}
+			room.broadcast(message)
 		}
+	})
 
-		err = conn.WriteMessage(messageType, message)
-		if err != nil {
-			log.Println(err)
-			return
-		}
-	}
+	fmt.Println("listening on port 4000")
+	log.Fatal(http.ListenAndServe(":4000", nil))
 }

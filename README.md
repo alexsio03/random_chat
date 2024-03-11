@@ -37,3 +37,4 @@ npm run start
 5. Open more emulators to handle multiple chatters
 
 ## License
+This project is licensed under the MIT License.
